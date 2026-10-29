@@ -112,12 +112,12 @@ object NameNormalize {
             return true
         }
         // Skip modifiers/variation selectors/combining marks at the edges.
-        val type = Character.getType(cp)
-        if (type == Character.MODIFIER_SYMBOL ||
-            type == Character.OTHER_SYMBOL ||
-            type == Character.FORMAT ||
-            type == Character.NON_SPACING_MARK ||
-            type == Character.ENCLOSING_MARK
+        val type: Int = Character.getType(cp)
+        if (type == Character.MODIFIER_SYMBOL.toInt() ||
+            type == Character.OTHER_SYMBOL.toInt() ||
+            type == Character.FORMAT.toInt() ||
+            type == Character.NON_SPACING_MARK.toInt() ||
+            type == Character.ENCLOSING_MARK.toInt()
         ) {
             return true
         }

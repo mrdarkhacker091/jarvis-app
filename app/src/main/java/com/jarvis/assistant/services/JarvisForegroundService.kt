@@ -18,7 +18,6 @@ import com.jarvis.assistant.JarvisState
 import com.jarvis.assistant.MainActivity
 import com.jarvis.assistant.R
 import com.jarvis.assistant.ai.Briefing
-import com.jarvis.assistant.ai.Briefing
 import com.jarvis.assistant.ai.JarvisBrain
 import com.jarvis.assistant.data.Prefs
 import com.jarvis.assistant.voice.SpeechRecognizerManager
