@@ -16,26 +16,61 @@ class TtsManager(ctx: Context) {
     init {
         engine = TextToSpeech(ctx.applicationContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                ready = true; engine?.language = Locale.getDefault()
-                queued?.let { speak(it) }; queued = null
+                ready = true
+                engine?.language = Locale.getDefault()
+                queued?.let { speak(it) }
+                queued = null
             }
         }
         engine?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) { onStart?.invoke() }
-            override fun onDone(utteranceId: String?) { onDone?.invoke() }
-            @Deprecated("Deprecated in Java") override fun onError(utteranceId: String?) { onDone?.invoke() }
+            override fun onStart(utteranceId: String?) {
+                onStart?.invoke()
+            }
+
+            override fun onDone(utteranceId: String?) {
+                onDone?.invoke()
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) {
+                onDone?.invoke()
+            }
         })
     }
-    fun setRate(rate: Float) { engine?.setSpeechRate(rate.coerceIn(0.5f, 2.0f)) }
+
+    fun setRate(rate: Float) {
+        engine?.setSpeechRate(rate.coerceIn(0.5f, 2.0f))
+    }
+
     fun speak(text: String) {
         val clean = text.trim()
         if (clean.isEmpty()) return
+
         if (!ready) {
             queued = clean
             return
         }
-        engine?.speak(clean, TextToSpeech.QUEUE_FLUSH, Bundle(), "jarvis-" + System.nanoTime())
+
+        engine?.speak(
+            clean,
+            TextToSpeech.QUEUE_FLUSH,
+            Bundle(),
+            "jarvis-" + System.nanoTime()
+        )
     }
-    fun stop() { engine?.stop() }
-    fun shutdown() { try { engine?.stop(); engine?.shutdown() } catch (e: Exception) {} engine = null; ready = false }
+
+    fun stop() {
+        engine?.stop()
+    }
+
+    fun shutdown() {
+        try {
+            engine?.stop()
+            engine?.shutdown()
+        } catch (e: Exception) {
+            // Engine may already be unavailable.
+        }
+        engine = null
+        ready = false
+    }
 }

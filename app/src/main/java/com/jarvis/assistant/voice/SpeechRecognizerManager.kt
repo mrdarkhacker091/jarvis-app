@@ -38,9 +38,39 @@ class SpeechRecognizerManager(private val ctx: Context) {
             }
         }
     }
-    fun stop() { main.post { listening = false; try { recognizer?.stopListening() } catch (e: Exception) {} } }
-    fun cancel() { main.post { listening = false; try { recognizer?.cancel() } catch (e: Exception) {} } }
-    fun destroy() { main.post { listening = false; try { recognizer?.destroy() } catch (e: Exception) {} recognizer = null } }
+    fun stop() {
+        main.post {
+            listening = false
+            try {
+                recognizer?.stopListening()
+            } catch (e: Exception) {
+                // already stopped
+            }
+        }
+    }
+
+    fun cancel() {
+        main.post {
+            listening = false
+            try {
+                recognizer?.cancel()
+            } catch (e: Exception) {
+                // already cancelled
+            }
+        }
+    }
+
+    fun destroy() {
+        main.post {
+            listening = false
+            try {
+                recognizer?.destroy()
+            } catch (e: Exception) {
+                // already destroyed
+            }
+            recognizer = null
+        }
+    }
 
     private fun intent(): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
