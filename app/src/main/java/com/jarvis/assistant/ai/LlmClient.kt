@@ -59,7 +59,11 @@ class LlmClient(private val baseUrl: String, private val apiKey: String, private
                     val tc = tcs.optJSONObject(i) ?: continue
                     val fn = tc.optJSONObject("function") ?: continue
                     val argsRaw = fn.optString("arguments", "{}")
-                    val args = try { JSONObject(argsRaw) } catch (e: Exception) { JSONObject() }
+                    val args = try {
+                        JSONObject(argsRaw)
+                    } catch (e: Exception) {
+                        JSONObject()
+                    }
                     calls.add(ToolCall(id = tc.optString("id", "call_$i"), name = fn.optString("name", ""), args = args))
                 }
             }

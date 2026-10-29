@@ -14,38 +14,100 @@ class TtsManager(ctx: Context) {
     var onDone: (() -> Unit)? = null
 
     init {
-        engine = TextToSpeech(ctx.applicationContext) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                ready = true; engine?.language = Locale.getDefault()
-                queued?.let { speak(it) }; queued = null
+        engine = try {
+            TextToSpeech(ctx.applicationContext) { status ->
+                if (status == TextToSpeech.SUCCESS) {
+                    ready = true
+                    try {
+                        engine?.language = Locale.getDefault()
+                    } catch (e: Exception) {
+                        // Keep the default engine voice when the locale is unsupported.
+                        android.util.Log.d("JarvisTts", "locale: " + e.message)
+                    }
+                    val pending = queued
+                    queued = null
+                    if (pending != null) {
+                        speak(pending)
+                    }
+                }
             }
+        } catch (e: Exception) {
+            android.util.Log.d("JarvisTts", "init: " + e.message)
+            null
         }
         engine?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) { onStart?.invoke() }
-            override fun onDone(utteranceId: String?) { onDone?.invoke() }
-            @Deprecated("Deprecated in Java") override fun onError(utteranceId: String?) { onDone?.invoke() }
+            override fun onStart(utteranceId: String?) {
+                try {
+                    onStart?.invoke()
+                } catch (e: Exception) {
+                    android.util.Log.d("JarvisTts", "onStart: " + e.message)
+                }
+            }
+
+            override fun onDone(utteranceId: String?) {
+                try {
+                    onDone?.invoke()
+                } catch (e: Exception) {
+                    android.util.Log.d("JarvisTts", "onDone: " + e.message)
+                }
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) {
+                try {
+                    onDone?.invoke()
+                } catch (e: Exception) {
+                    android.util.Log.d("JarvisTts", "onError: " + e.message)
+                }
+            }
         })
     }
-    fun setRate(rate: Float) { engine?.setSpeechRate(rate.coerceIn(0.5f, 2.0f)) }
+
+    fun setRate(rate: Float) {
+        try {
+            engine?.setSpeechRate(rate.coerceIn(0.5f, 2.0f))
+        } catch (e: Exception) {
+            android.util.Log.d("JarvisTts", "setRate: " + e.message)
+        }
+    }
+
     fun speak(text: String) {
         val clean = text.trim()
-        if (clean.isEmpty()) return
+        if (clean.isEmpty()) {
+            return
+        }
         if (!ready) {
             queued = clean
             return
         }
-        engine?.speak(clean, TextToSpeech.QUEUE_FLUSH, Bundle(), "jarvis-" + System.nanoTime())
+        try {
+            engine?.speak(clean, TextToSpeech.QUEUE_FLUSH, Bundle(), "jarvis-" + System.nanoTime())
+        } catch (e: Exception) {
+            android.util.Log.d("JarvisTts", "speak: " + e.message)
+        }
     }
+
     fun stop() {
-        engine?.stop()
+        try {
+            engine?.stop()
+        } catch (e: Exception) {
+            // Stop failed, usually because the engine was already idle.
+            android.util.Log.d("JarvisTts", "stop: " + e.message)
+        }
     }
 
     fun shutdown() {
         try {
             engine?.stop()
+        } catch (e: Exception) {
+            // Best effort before shutdown.
+            android.util.Log.d("JarvisTts", "shutdown stop: " + e.message)
+        }
+        try {
             engine?.shutdown()
         } catch (e: Exception) {
-            // engine already gone
+            // Engine already gone.
+            android.util.Log.d("JarvisTts", "shutdown: " + e.message)
         }
         engine = null
         ready = false

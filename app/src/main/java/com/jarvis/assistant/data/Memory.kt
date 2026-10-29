@@ -13,7 +13,9 @@ object Memory {
     }
     fun list(ctx: Context): List<String> = try {
         val arr = JSONArray(sp(ctx).getString(KEY, "[]") ?: "[]"); (0 until arr.length()).map { arr.getString(it) }
-    } catch (e: Exception) { emptyList() }
+    } catch (e: Exception) {
+        emptyList()
+    }
     fun clear(ctx: Context) { sp(ctx).edit().remove(KEY).apply() }
     fun toPromptString(ctx: Context): String = list(ctx).joinToString("\n") { "- $it" }.ifEmpty { "No stored facts yet." }
     private fun save(ctx: Context, facts: List<String>) {

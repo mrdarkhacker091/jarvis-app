@@ -150,4 +150,5 @@ private fun statusLine(state: JarvisState): String = when (state) {
     JarvisState.LISTENING -> "listening"
     JarvisState.THINKING -> "thinking"
     JarvisState.SPEAKING -> "speaking"
+    JarvisState.ERROR -> "error"
 }

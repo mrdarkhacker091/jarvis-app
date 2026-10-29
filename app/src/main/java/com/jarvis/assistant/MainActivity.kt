@@ -21,8 +21,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.jarvis.assistant.data.Memory
 import com.jarvis.assistant.data.Prefs
+import com.jarvis.assistant.notifications.NotificationStore
 import com.jarvis.assistant.services.JarvisForegroundService
-import com.jarvis.assistant.ui.HomeScreen
+import com.jarvis.assistant.ui.Dashboard
 import com.jarvis.assistant.ui.JarvisTheme
 import com.jarvis.assistant.ui.SettingsScreen
 
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Prefs.init(this)
+        NotificationStore.pruneExpired(this)
         askForRuntimePermissions()
         setContent {
             JarvisTheme {
@@ -43,9 +45,17 @@ class MainActivity : ComponentActivity() {
 
                 val lifecycleOwner = LocalLifecycleOwner.current
                 var resumeTick by remember { mutableStateOf(0) }
+                var notifSnapshot by remember { mutableStateOf(NotificationStore.recent(this@MainActivity, 30)) }
                 DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
-                        if (event == Lifecycle.Event.ON_RESUME) resumeTick += 1
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            resumeTick += 1
+                            try {
+                                notifSnapshot = NotificationStore.recent(this@MainActivity, 30)
+                            } catch (e: Exception) {
+                                // Best effort: keep the last snapshot.
+                            }
+                        }
                     }
                     lifecycleOwner.lifecycle.addObserver(observer)
                     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -53,11 +63,21 @@ class MainActivity : ComponentActivity() {
 
                 val warning = buildString {
                     val missing = mutableListOf<String>()
-                    if (!hasMic()) missing.add("microphone")
-                    if (!hasNotificationAccess()) missing.add("notification access")
-                    if (!hasAccessibility()) missing.add("accessibility")
-                    if (missing.isEmpty()) append("") else {
-                        append("Missing: "); append(missing.joinToString(", ")); append(". Grant them in settings.")
+                    if (!hasMic()) {
+                        missing.add("microphone")
+                    }
+                    if (!hasNotificationAccess()) {
+                        missing.add("notification access")
+                    }
+                    if (!hasAccessibility()) {
+                        missing.add("accessibility")
+                    }
+                    if (missing.isEmpty()) {
+                        append("")
+                    } else {
+                        append("Missing: ")
+                        append(missing.joinToString(", "))
+                        append(". Grant them in settings.")
                     }
                 }.ifBlank { null }
 
@@ -67,7 +87,14 @@ class MainActivity : ComponentActivity() {
                 if (showSettings) {
                     SettingsScreen(
                         prefs = Prefs.get(this@MainActivity),
-                        onBack = { showSettings = false },
+                        onBack = {
+                            showSettings = false
+                            try {
+                                notifSnapshot = NotificationStore.recent(this@MainActivity, 30)
+                            } catch (e: Exception) {
+                                // Keep the last snapshot.
+                            }
+                        },
                         onGrantNotificationAccess = { openNotificationAccess() },
                         onGrantAccessibility = { openAccessibility() },
                         onGrantWriteSettings = { openWriteSettings() },
@@ -77,13 +104,16 @@ class MainActivity : ComponentActivity() {
                         onRestartService = { restartService() }
                     )
                 } else {
-                    HomeScreen(
-                        turns = turns, state = state,
+                    Dashboard(
+                        turns = turns,
+                        state = state,
+                        notifications = notifSnapshot,
+                        prefs = Prefs.get(this@MainActivity),
+                        setupWarning = warning,
                         onTalk = { JarvisForegroundService.listenOnce(this@MainActivity) },
                         onSend = { text -> JarvisForegroundService.process(this@MainActivity, text) },
-                        onSettings = { showSettings = true },
-                        onClear = { JarvisBus.clear() },
-                        setupWarning = warning
+                        onOpenSettings = { showSettings = true },
+                        onClear = { JarvisBus.clear() }
                     )
                 }
             }
@@ -92,53 +122,119 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        try { JarvisForegroundService.start(this) } catch (e: Exception) { }
+        try {
+            NotificationStore.pruneExpired(this)
+        } catch (e: Exception) {
+            // Best effort on resume.
+        }
+        try {
+            JarvisForegroundService.start(this)
+        } catch (e: Exception) {
+            // Service start is best-effort here; the user can retry from settings.
+        }
     }
 
     private fun askForRuntimePermissions() {
         val wanted = mutableListOf(Manifest.permission.RECORD_AUDIO)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) wanted.add(Manifest.permission.POST_NOTIFICATIONS)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            wanted.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
         wanted.add(Manifest.permission.CAMERA)
-        runtimePerms.launch(wanted.toTypedArray())
+        try {
+            runtimePerms.launch(wanted.toTypedArray())
+        } catch (e: Exception) {
+            // Permission prompt failed; the settings screen explains manual grants.
+        }
     }
 
-    private fun hasMic(): Boolean =
-        checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
-            android.content.pm.PackageManager.PERMISSION_GRANTED
+    private fun hasMic(): Boolean {
+        return try {
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        } catch (e: Exception) {
+            false
+        }
+    }
 
-    private fun hasNotificationAccess(): Boolean =
-        NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
+    private fun hasNotificationAccess(): Boolean {
+        return try {
+            NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     private fun hasAccessibility(): Boolean {
-        val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
-        return enabled.split(':').any { it.contains(packageName) }
+        return try {
+            val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+                ?: return false
+            enabled.split(':').any { it.contains(packageName) }
+        } catch (e: Exception) {
+            false
+        }
     }
 
     private fun openNotificationAccess() {
-        startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+        try {
+            startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+        } catch (e: Exception) {
+            // No-op: the settings screen stays visible.
+        }
     }
 
     private fun openAccessibility() {
-        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        try {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        } catch (e: Exception) {
+            // No-op: the settings screen stays visible.
+        }
     }
 
     private fun openWriteSettings() {
-        startActivity(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-            Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName"))
-        else Intent(Settings.ACTION_SETTINGS))
+        try {
+            startActivity(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName"))
+                } else {
+                    Intent(Settings.ACTION_SETTINGS)
+                }
+            )
+        } catch (e: Exception) {
+            // No-op.
+        }
     }
 
     private fun openOverlay() {
-        startActivity(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
-        else Intent(Settings.ACTION_SETTINGS))
+        try {
+            startActivity(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+                } else {
+                    Intent(Settings.ACTION_SETTINGS)
+                }
+            )
+        } catch (e: Exception) {
+            // No-op.
+        }
     }
 
     private fun openBattery() {
-        startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).setData(Uri.parse("package:$packageName")))
+        try {
+            startActivity(
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                    .setData(Uri.parse("package:$packageName"))
+            )
+        } catch (e: Exception) {
+            // No-op.
+        }
     }
 
     private fun restartService() {
-        try { JarvisForegroundService.stop(this); JarvisForegroundService.start(this) } catch (e: Exception) { }
+        try {
+            JarvisForegroundService.stop(this)
+            JarvisForegroundService.start(this)
+        } catch (e: Exception) {
+            // Best effort.
+        }
     }
 }

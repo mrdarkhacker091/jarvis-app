@@ -118,32 +118,107 @@ object ToolRegistry {
         return "Timer started for $minutes minutes."
     }
 
-    private fun openApp(ctx: Context, name: String): String {
-        if (name.isBlank()) return "I need an app name."
+    fun resolveLaunchableApps(ctx: Context, query: String): List<Triple<String, String, android.content.Intent>> {
         val pm = ctx.packageManager
-        val query = name.trim().lowercase()
-        val byPackage = pm.getLaunchIntentForPackage(name)
-        if (byPackage != null) {
-            byPackage.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            ctx.startActivity(byPackage)
-            return "Opened $name."
+        val q = query.trim().lowercase()
+        if (q.isEmpty()) {
+            return emptyList()
         }
-        val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            pm.getInstalledApplications(android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
-        } else {
-            @Suppress("DEPRECATION") pm.getInstalledApplications(0)
+        val direct = try {
+            pm.getLaunchIntentForPackage(query.trim())
+        } catch (e: Exception) {
+            null
         }
-        val match = packages.firstOrNull {
-            pm.getApplicationLabel(it).toString().lowercase() == query
-        } ?: packages.firstOrNull {
-            pm.getApplicationLabel(it).toString().lowercase().contains(query)
+        if (direct != null) {
+            val label = try {
+                pm.getApplicationLabel(pm.getApplicationInfo(query.trim(), 0)).toString()
+            } catch (e: Exception) {
+                query.trim()
+            }
+            return listOf(Triple(query.trim(), label, direct))
         }
-        if (match == null) return "I could not find an app called $name."
-        val launch = pm.getLaunchIntentForPackage(match.packageName)
-            ?: return "${pm.getApplicationLabel(match)} has no launch screen."
-        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        ctx.startActivity(launch)
-        return "Opened ${pm.getApplicationLabel(match)}."
+        val packages = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getInstalledApplications(android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION") pm.getInstalledApplications(0)
+            }
+        } catch (e: Exception) {
+            return emptyList()
+        }
+        val aliases = q.replace(Regex("[^a-z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim()
+        val scored = ArrayList<Pair<android.content.pm.ApplicationInfo, Int>>()
+        for (info in packages) {
+            val label = try {
+                pm.getApplicationLabel(info).toString()
+            } catch (e: Exception) {
+                continue
+            }
+            val low = label.lowercase()
+            val score = when {
+                low == q -> 0
+                low == aliases -> 1
+                low.startsWith(q) -> 2
+                low.contains(q) -> 3
+                q.split(" ").all { w -> w.isNotEmpty() && low.contains(w) } -> 4
+                else -> -1
+            }
+            if (score >= 0) {
+                scored.add(info to score)
+            }
+        }
+        scored.sortBy { it.second }
+        val out = ArrayList<Triple<String, String, android.content.Intent>>()
+        for ((info, _) in scored.take(6)) {
+            val launch = try {
+                pm.getLaunchIntentForPackage(info.packageName)
+            } catch (e: Exception) {
+                null
+            } ?: continue
+            val label = try {
+                pm.getApplicationLabel(info).toString()
+            } catch (e: Exception) {
+                info.packageName
+            }
+            out.add(Triple(info.packageName, label, launch))
+        }
+        return out
+    }
+
+    private fun openApp(ctx: Context, name: String): String {
+        if (name.isBlank()) {
+            return "I need an app name."
+        }
+        val matches = resolveLaunchableApps(ctx, name)
+        if (matches.isEmpty()) {
+            return "I could not find an app called $name on this phone."
+        }
+        val exact = matches.firstOrNull { it.second.lowercase() == name.trim().lowercase() }
+        if (exact != null) {
+            return try {
+                exact.third.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(exact.third)
+                "Opened ${exact.second}."
+            } catch (e: SecurityException) {
+                "Android blocked opening ${exact.second}."
+            } catch (e: Exception) {
+                "${exact.second} could not be launched: ${e.message ?: "unknown error"}."
+            }
+        }
+        if (matches.size == 1) {
+            val only = matches[0]
+            return try {
+                only.third.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(only.third)
+                "Opened ${only.second}."
+            } catch (e: SecurityException) {
+                "Android blocked opening ${only.second}."
+            } catch (e: Exception) {
+                "${only.second} could not be launched: ${e.message ?: "unknown error"}."
+            }
+        }
+        val names = matches.take(3).joinToString(", ") { it.second }
+        return "I found more than one match: $names. Which one should I open?"
     }
 
     private fun flashlight(ctx: Context, on: Boolean): String {
@@ -184,9 +259,21 @@ object ToolRegistry {
 
     private fun readNotifications(ctx: Context, limit: Int): String {
         val items = NotificationStore.recent(ctx, limit.coerceIn(1, 20))
-        if (items.isEmpty()) return "No notifications captured yet. Notification access may not be granted."
+        if (items.isEmpty()) {
+            return "No notifications captured yet. Notification access may not be granted."
+        }
         return items.joinToString("\n") { n ->
-            "[${n.app}] ${n.sender ?: ""}${if (n.sender != null) ": " else ""}${n.text}"
+            val who = n.spokenSender.ifBlank { n.sender.orEmpty() }
+            val replyBit = if (n.canReply) {
+                " [reply supported]"
+            } else {
+                ""
+            }
+            if (who.isNotBlank()) {
+                "[${n.app}] $who: ${n.text}$replyBit"
+            } else {
+                "[${n.app}] ${n.text}$replyBit"
+            }
         }
     }
 

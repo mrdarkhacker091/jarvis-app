@@ -11,6 +11,10 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         Prefs.init(context)
         if (!Prefs.get(context).wakeWordEnabled) return
-        try { JarvisForegroundService.start(context) } catch (e: Exception) { }
+        try {
+            JarvisForegroundService.start(context)
+        } catch (e: Exception) {
+            // Service start after boot is best-effort; user can start it manually.
+        }
     }
 }
