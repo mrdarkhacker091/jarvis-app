@@ -19,6 +19,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -59,7 +61,7 @@ fun SettingsScreen(
     Column(modifier = Modifier.fillMaxSize().background(JarvisBg).verticalScroll(rememberScrollState()).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
-                Icon(androidx.compose.material.icons.Icons.Filled.ArrowBack, contentDescription = "Back", tint = JarvisDim)
+                Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = JarvisDim)
             }
             Text("Settings", color = JarvisText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }

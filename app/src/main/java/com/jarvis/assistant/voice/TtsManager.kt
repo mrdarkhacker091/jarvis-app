@@ -27,7 +27,15 @@ class TtsManager(ctx: Context) {
         })
     }
     fun setRate(rate: Float) { engine?.setSpeechRate(rate.coerceIn(0.5f, 2.0f)) }
-    fun speak(text: String) { val clean = text.trim(); if (clean.isEmpty()) return; if (!ready) { queued = clean; return }; engine?.speak(clean, TextToSpeech.QUEUE_FLUSH, Bundle(), "jarvis-${System.nanoTime()}") }
+    fun speak(text: String) {
+        val clean = text.trim()
+        if (clean.isEmpty()) return
+        if (!ready) {
+            queued = clean
+            return
+        }
+        engine?.speak(clean, TextToSpeech.QUEUE_FLUSH, Bundle(), "jarvis-" + System.nanoTime())
+    }
     fun stop() { engine?.stop() }
     fun shutdown() { try { engine?.stop(); engine?.shutdown() } catch (e: Exception) {} engine = null; ready = false }
 }

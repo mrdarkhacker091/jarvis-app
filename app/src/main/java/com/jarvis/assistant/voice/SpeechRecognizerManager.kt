@@ -29,7 +29,12 @@ class SpeechRecognizerManager(private val ctx: Context) {
             }
             if (!listening) {
                 listening = true
-                try { recognizer?.startListening(intent()) } catch (e: Exception) { listening = false; l.onError(SpeechRecognizer.ERROR_CLIENT) }
+                try {
+                    recognizer?.startListening(intent())
+                } catch (e: Exception) {
+                    listening = false
+                    l.onError(SpeechRecognizer.ERROR_CLIENT)
+                }
             }
         }
     }
