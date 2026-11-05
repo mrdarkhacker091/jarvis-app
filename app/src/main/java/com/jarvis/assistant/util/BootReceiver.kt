@@ -10,11 +10,10 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         Prefs.init(context)
+        // Resume only if the user explicitly enabled wake listening. Android
+        // may still block background microphone start; the foreground service
+        // starts the visible notification and reports honestly if it cannot.
         if (!Prefs.get(context).wakeWordEnabled) return
-        try {
-            JarvisForegroundService.start(context)
-        } catch (e: Exception) {
-            // Service start after boot is best-effort; user can start it manually.
-        }
+        try { JarvisForegroundService.start(context) } catch (_: Exception) { }
     }
 }

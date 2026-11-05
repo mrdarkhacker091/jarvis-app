@@ -1,5 +1,6 @@
 package com.jarvis.assistant.ui
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,35 +10,41 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jarvis.assistant.ai.LlmClient
+import com.jarvis.assistant.ai.providers.GeminiProvider
 import com.jarvis.assistant.data.Prefs
+import com.jarvis.assistant.data.Provider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
 
 @Composable
 fun SettingsScreen(
@@ -49,265 +56,143 @@ fun SettingsScreen(
     onGrantOverlay: () -> Unit,
     onBatteryExemption: () -> Unit,
     onClearMemory: () -> Unit,
-    onRestartService: () -> Unit
+    onEraseKeys: () -> Unit,
+    onRestartService: () -> Unit,
+    onShowScan: () -> Unit
 ) {
-    var baseUrl by remember { mutableStateOf(prefs.baseUrl) }
-    var apiKey by remember { mutableStateOf(prefs.apiKey) }
-    var model by remember { mutableStateOf(prefs.model) }
+    val scope = rememberCoroutineScope()
+    var providers by remember { mutableStateOf(prefs.providers().toMutableList()) }
     var phrase by remember { mutableStateOf(prefs.wakePhrase) }
     var wake by remember { mutableStateOf(prefs.wakeWordEnabled) }
-    var handsFree by remember { mutableStateOf(prefs.handsFreeEnabled) }
-    var announce by remember { mutableStateOf(prefs.announceNotifications) }
-    var briefing by remember { mutableStateOf(prefs.briefingDetail) }
-    var confirmReplies by remember { mutableStateOf(prefs.replyConfirmDefault) }
-    var reminders by remember { mutableStateOf(prefs.oneHourReminders) }
-    var reducedMotion by remember { mutableStateOf(prefs.reducedMotion) }
-    var allowedPkgs by remember { mutableStateOf(prefs.allowedPackages.joinToString(", ")) }
+    var briefing by remember { mutableStateOf(prefs.briefingOnWake) }
+    var detail by remember { mutableStateOf(prefs.briefingDetail) }
+    var reminders by remember { mutableStateOf(prefs.remindersEnabled) }
+    var pitch by remember { mutableStateOf(prefs.ttsPitch.toString()) }
+    var rate by remember { mutableStateOf(prefs.ttsRate.toString()) }
+    var anim by remember { mutableStateOf(prefs.animationIntensity.toString()) }
+    var saved by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(JarvisBg)
-            .verticalScroll(rememberScrollState()).padding(16.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxSize().background(JarvisBg).verticalScroll(rememberScrollState()).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = JarvisDim)
-            }
-            Text("Settings", color = JarvisText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = JarvisCyan) }
+            Text("SETTINGS", color = JarvisCyan, fontWeight = FontWeight.Bold, fontSize = 18.sp, letterSpacing = 3.sp)
         }
 
-        Spacer(Modifier.height(12.dp))
-        SectionLabel("MODEL")
-        Field("Base URL", baseUrl) { baseUrl = it }
-        Field("API key", apiKey) { apiKey = it }
-        Field("Model", model) { model = it }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            LlmClient.PRESETS.forEach { preset ->
-                Button(
-                    onClick = {
-                        if (preset.second.isNotBlank()) {
-                            baseUrl = preset.second
-                            model = preset.third
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = JarvisRaised, contentColor = JarvisCyan),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(preset.first, fontSize = 11.sp)
+        Text("AI PROVIDERS", color = JarvisDim, fontSize = 11.sp, letterSpacing = 2.sp, modifier = Modifier.padding(top = 8.dp))
+        providers.forEachIndexed { i, p ->
+            ProviderCard(p, onChange = { updated ->
+                providers = providers.toMutableList().also { it[i] = updated }
+            }, onTest = { completion ->
+                scope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        try {
+                            val msgs = JSONArray().put(org.json.JSONObject().put("role", "user").put("content", "Say OK."))
+                            if (p.nativeGemini) GeminiProvider.complete(p, msgs, null)
+                            else LlmClient(p.baseUrl, p.apiKey, p.model).complete(msgs, null)
+                            "OK"
+                        } catch (e: Exception) { e.message?.take(80) ?: "failed" }
+                    }
+                    completion(result)
                 }
-            }
+            })
+            Spacer(Modifier.height(6.dp))
         }
 
-        Button(
-            onClick = {
-                prefs.baseUrl = baseUrl
-                prefs.apiKey = apiKey
-                prefs.model = model
-            },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = JarvisCyan, contentColor = Color.Black)
-        ) {
-            Text("Save model settings")
+        Button(onClick = {
+            prefs.saveProviders(providers)
+            prefs.wakePhrase = phrase; prefs.wakeWordEnabled = wake
+            prefs.briefingOnWake = briefing; prefs.briefingDetail = detail; prefs.remindersEnabled = reminders
+            prefs.ttsPitch = pitch.toFloatOrNull() ?: 0.62f; prefs.ttsRate = rate.toFloatOrNull() ?: 0.95f
+            prefs.animationIntensity = anim.toFloatOrNull() ?: 1f
+            saved = true; onRestartService()
+        }, colors = ButtonDefaults.buttonColors(containerColor = JarvisCyan, contentColor = Color.Black), modifier = Modifier.fillMaxWidth()) {
+            Text("SAVE")
         }
+        if (saved) Text("Saved. Provider keys are stored in Android Keystore-encrypted storage.", color = JarvisCyan, fontSize = 10.sp)
 
-        Spacer(Modifier.height(22.dp))
-        SectionLabel("VOICE")
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Wake word", color = JarvisText, modifier = Modifier.weight(1f))
-            Switch(
-                checked = wake,
-                onCheckedChange = {
-                    wake = it
-                    prefs.wakeWordEnabled = it
-                    onRestartService()
-                }
-            )
-        }
-        Field("Wake phrase", phrase) {
-            phrase = it
-            prefs.wakePhrase = it
-        }
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Hands-free listening", color = JarvisText)
-                Text(
-                    "Service listens for the wake phrase without opening the app.",
-                    color = JarvisDim,
-                    fontSize = 11.sp
-                )
-            }
-            Switch(
-                checked = handsFree,
-                onCheckedChange = {
-                    handsFree = it
-                    prefs.handsFreeEnabled = it
-                    onRestartService()
-                }
-            )
-        }
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Announce notifications", color = JarvisText)
-                Text(
-                    "Off by default. Wake briefings still work when this is off.",
-                    color = JarvisDim,
-                    fontSize = 11.sp
-                )
-            }
-            Switch(
-                checked = announce,
-                onCheckedChange = {
-                    announce = it
-                    prefs.announceNotifications = it
-                }
-            )
-        }
+        Section("VOICE & WAKE")
+        FieldRow("Wake phrase", phrase) { phrase = it }
+        ToggleRow("Wake listening", wake) { wake = it }
+        ToggleRow("Briefing on wake", briefing) { briefing = it }
+        FieldRow("Briefing detail (concise/normal/detailed)", detail) { detail = it }
+        ToggleRow("One-hour reminders", reminders) { reminders = it }
+        FieldRow("TTS pitch (0.5 deep - 1.0)", pitch) { pitch = it }
+        FieldRow("TTS rate", rate) { rate = it }
+        FieldRow("Animation intensity (0-1)", anim) { anim = it }
 
-        Spacer(Modifier.height(22.dp))
-        SectionLabel("BRIEFING")
-        BriefingDetailRow(briefing) {
-            briefing = it
-            prefs.briefingDetail = it
-        }
+        Section("PERMISSIONS")
+        ActionRow("Grant notification access", onGrantNotificationAccess)
+        ActionRow("Grant accessibility", onGrantAccessibility)
+        ActionRow("Grant write settings", onGrantWriteSettings)
+        ActionRow("Grant overlay", onGrantOverlay)
+        ActionRow("Battery exemption", onBatteryExemption)
 
-        Spacer(Modifier.height(22.dp))
-        SectionLabel("MESSAGES")
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Confirm before sending replies", color = JarvisText)
-                Text("JARVIS asks first: Send X to Y?", color = JarvisDim, fontSize = 11.sp)
-            }
-            Switch(
-                checked = confirmReplies,
-                onCheckedChange = {
-                    confirmReplies = it
-                    prefs.replyConfirmDefault = it
-                }
-            )
-        }
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("One-hour unanswered reminders", color = JarvisText)
-                Text("Gentle nudge for conversations that look unanswered.", color = JarvisDim, fontSize = 11.sp)
-            }
-            Switch(
-                checked = reminders,
-                onCheckedChange = {
-                    reminders = it
-                    prefs.oneHourReminders = it
-                }
-            )
-        }
-        Field("Only listen to these apps (package names, comma separated, blank = all)", allowedPkgs) {
-            allowedPkgs = it
-            prefs.allowedPackages = it.split(",").map { pkg -> pkg.trim() }.filter { pkg -> pkg.isNotEmpty() }.toSet()
-        }
-
-        Spacer(Modifier.height(22.dp))
-        SectionLabel("DISPLAY")
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Reduce motion", color = JarvisText)
-                Text("Pauses the animated core for a calmer screen.", color = JarvisDim, fontSize = 11.sp)
-            }
-            Switch(
-                checked = reducedMotion,
-                onCheckedChange = {
-                    reducedMotion = it
-                    prefs.reducedMotion = it
-                }
-            )
-        }
-
-        Spacer(Modifier.height(22.dp))
-        SectionLabel("PERMISSIONS")
-        ActionRow("Notification access", onGrantNotificationAccess)
-        ActionRow("Accessibility service", onGrantAccessibility)
-        ActionRow("Write system settings", onGrantWriteSettings)
-        ActionRow("Display over other apps", onGrantOverlay)
-        ActionRow("Ignore battery optimisation", onBatteryExemption)
-
-        Spacer(Modifier.height(22.dp))
-        SectionLabel("DATA")
-        ActionRow("Clear remembered facts", onClearMemory)
-        Spacer(Modifier.height(40.dp))
+        Section("DATA & APP")
+        ActionRow("App / security scan", onShowScan)
+        ActionRow("Clear conversation memory", onClearMemory)
+        ActionRow("Erase all provider keys", onEraseKeys)
+        Spacer(Modifier.height(20.dp))
     }
 }
 
 @Composable
-private fun BriefingDetailRow(current: String, onPick: (String) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        val options = listOf(Prefs.DETAIL_CONCISE, Prefs.DETAIL_NORMAL, Prefs.DETAIL_DETAILED)
-        options.forEach { option ->
-            Button(
-                onClick = { onPick(option) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (current == option) JarvisCyan else JarvisRaised,
-                    contentColor = if (current == option) Color.Black else JarvisCyan
-                ),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text(option.replaceFirstChar { ch -> ch.uppercase() }, fontSize = 11.sp)
-            }
+private fun ProviderCard(p: Provider, onChange: (Provider) -> Unit, onTest: ((String) -> Unit) -> Unit) {
+    var showKey by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf("") }
+    Column(modifier = Modifier.fillMaxWidth().background(JarvisSurface).padding(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(p.name, color = JarvisCyan, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Spacer(Modifier.weight(1f))
+            Switch(checked = p.enabled, onCheckedChange = { onChange(p.copy(enabled = it)) })
         }
+        OutTextField("Base URL", p.baseUrl) { onChange(p.copy(baseUrl = it)) }
+        OutTextField("Model", p.model) { onChange(p.copy(model = it)) }
+        OutTextField("API key", p.apiKey, password = !showKey) { onChange(p.copy(apiKey = it)) }
+        Row {
+            Button(onClick = { showKey = !showKey }, colors = ButtonDefaults.buttonColors(containerColor = JarvisRaised, contentColor = JarvisText)) { Text(if (showKey) "Hide" else "Show") }
+            Spacer(Modifier.width(8.dp))
+            Button(onClick = { onTest { status = it } }, colors = ButtonDefaults.buttonColors(containerColor = JarvisRaised, contentColor = JarvisText)) { Text("Test") }
+            Spacer(Modifier.width(8.dp))
+            if (p.apiKey.isBlank() || p.baseUrl.isBlank())
+                Text("Configure endpoint/key/model", color = JarvisRed, fontSize = 10.sp)
+        }
+        if (status.isNotBlank()) Text(status, color = JarvisDim, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
 @Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        color = JarvisCyan,
-        fontSize = 11.sp,
-        letterSpacing = 2.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(top = 8.dp, bottom = 6.dp)
-    )
+private fun Section(title: String) {
+    Text(title, color = JarvisDim, fontSize = 11.sp, letterSpacing = 2.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
 }
 
 @Composable
-private fun Field(label: String, value: String, onChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        label = { Text(label, color = JarvisDim) },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = JarvisSurface,
-            unfocusedContainerColor = JarvisSurface,
-            focusedTextColor = JarvisText,
-            unfocusedTextColor = JarvisText,
-            cursorColor = JarvisCyan,
-            focusedIndicatorColor = JarvisCyan,
-            unfocusedIndicatorColor = JarvisRaised
-        )
-    )
+private fun FieldRow(label: String, value: String, onChange: (String) -> Unit) {
+    OutTextField(label, value, onChange)
+    Spacer(Modifier.height(4.dp))
+}
+
+@Composable
+private fun ToggleRow(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(label, color = JarvisText, fontSize = 12.sp, modifier = Modifier.weight(1f))
+        Switch(checked = value, onCheckedChange = onChange)
+    }
 }
 
 @Composable
 private fun ActionRow(label: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(12.dp)).background(JarvisSurface)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, color = JarvisText, fontSize = 13.sp, modifier = Modifier.weight(1f))
-        Button(
-            onClick = onClick,
-            colors = ButtonDefaults.buttonColors(containerColor = JarvisRaised, contentColor = JarvisCyan),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text("Open", fontSize = 11.sp)
-        }
+    Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = JarvisRaised, contentColor = JarvisText), modifier = Modifier.fillMaxWidth()) {
+        Text(label, fontSize = 11.sp)
     }
+    Spacer(Modifier.height(4.dp))
+}
+
+@Composable
+private fun OutTextField(label: String, value: String, onChange: (String) -> Unit, password: Boolean = false) {
+    OutlinedTextField(value = value, onValueChange = onChange, label = { Text(label, color = JarvisDim, fontSize = 10.sp) },
+        singleLine = true, visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
+        colors = TextFieldDefaults.colors(focusedContainerColor = JarvisSurface, unfocusedContainerColor = JarvisSurface,
+            focusedTextColor = JarvisText, unfocusedTextColor = JarvisText, focusedIndicatorColor = JarvisCyan),
+        modifier = Modifier.fillMaxWidth())
+    Spacer(Modifier.height(4.dp))
 }

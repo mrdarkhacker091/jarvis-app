@@ -1,0 +1,106 @@
+JARVIS AI — ANDROID COMPANION (native Kotlin source)
+=====================================================
+Files: 55
+Generated: 2026-11-04T20:51:39.711Z
+
+This is a real Android Studio project, not a WebView wrapper. Chat talks to the
+same secure Jarvis backend, speech uses the Android speech APIs, and every device
+action runs through an official Android API with its true result reported back.
+
+BUILD THE APK
+-------------
+1. Unzip this archive.
+2. Open the jarvis-ai-android folder in Android Studio (JDK 17), or run:
+     gradle wrapper --gradle-version 8.7
+     ./gradlew assembleDebug
+3. APK: app/build/outputs/apk/debug/app-debug.apk
+4. Install: adb install -r app/build/outputs/apk/debug/app-debug.apk
+   or copy the APK to the phone and open it.
+
+CONNECT IT
+----------
+1. Jarvis web dashboard -> API -> create an app API key.
+2. In the Android app open SETTINGS, paste the key, press SAVE KEY.
+3. The key is kept in EncryptedSharedPreferences on the device.
+
+DEFAULT ASSISTANT
+-----------------
+After installing, open Settings -> Apps -> Default apps -> Digital assistant and
+choose Jarvis AI. Availability depends on the Android version, the manufacturer
+(Infinix/Transsion builds vary) and system policy — installing the APK alone
+never replaces Google Assistant.
+
+NOT IMPLEMENTED (stated honestly inside the app)
+-----------------------------------------------
+- Always-on "Hey Jarvis" wake word. Voice input is push to talk, because Android
+  background microphone rules make always-on listening unreliable and costly.
+- Antivirus-style scanning: a normal Android app cannot read other apps' private
+  data, so the scan reviews permissions and security patch level and says so.
+- Toggling Wi-Fi, mobile data or GPS: Android forbids it for third-party apps, so
+  the app opens the relevant settings screen instead of pretending.
+
+STEPS
+-----
+1. Unzip the archive and open the jarvis-ai-android folder in Android Studio.
+2. Let Gradle sync, then run ./gradlew assembleDebug (JDK 17).
+3. Install app/build/outputs/apk/debug/app-debug.apk on the phone.
+4. Create an API key in the Jarvis dashboard → API, paste it in the app SETTINGS tab.
+5. Grant microphone and location permissions when the app asks.
+
+FILES
+-----
+- APK-BUILD.md
+- app/build.gradle.kts
+- app/proguard-rules.pro
+- app/src/main/AndroidManifest.xml
+- app/src/main/java/com/jarvis/assistant/accessibility/JarvisAccessibilityService.kt
+- app/src/main/java/com/jarvis/assistant/ai/AppNameAliases.kt
+- app/src/main/java/com/jarvis/assistant/ai/AppResolver.kt
+- app/src/main/java/com/jarvis/assistant/ai/JarvisBrain.kt
+- app/src/main/java/com/jarvis/assistant/ai/LlmClient.kt
+- app/src/main/java/com/jarvis/assistant/ai/LocalCommandRouter.kt
+- app/src/main/java/com/jarvis/assistant/ai/ProviderManager.kt
+- app/src/main/java/com/jarvis/assistant/ai/ProviderOrder.kt
+- app/src/main/java/com/jarvis/assistant/ai/providers/GeminiProvider.kt
+- app/src/main/java/com/jarvis/assistant/ai/ToolRegistry.kt
+- app/src/main/java/com/jarvis/assistant/ai/WebSearchTool.kt
+- app/src/main/java/com/jarvis/assistant/contacts/ContactsHelper.kt
+- app/src/main/java/com/jarvis/assistant/data/Memory.kt
+- app/src/main/java/com/jarvis/assistant/data/Prefs.kt
+- app/src/main/java/com/jarvis/assistant/JarvisBus.kt
+- app/src/main/java/com/jarvis/assistant/MainActivity.kt
+- app/src/main/java/com/jarvis/assistant/notifications/BriefingBuilder.kt
+- app/src/main/java/com/jarvis/assistant/notifications/JarvisNotificationListener.kt
+- app/src/main/java/com/jarvis/assistant/notifications/NameNormalizer.kt
+- app/src/main/java/com/jarvis/assistant/notifications/NotificationDedup.kt
+- app/src/main/java/com/jarvis/assistant/notifications/NotificationStore.kt
+- app/src/main/java/com/jarvis/assistant/notifications/ReminderEligibility.kt
+- app/src/main/java/com/jarvis/assistant/security/AppScanner.kt
+- app/src/main/java/com/jarvis/assistant/services/JarvisForegroundService.kt
+- app/src/main/java/com/jarvis/assistant/ui/AppScanScreen.kt
+- app/src/main/java/com/jarvis/assistant/ui/HomeScreen.kt
+- app/src/main/java/com/jarvis/assistant/ui/OnboardingScreen.kt
+- app/src/main/java/com/jarvis/assistant/ui/SettingsScreen.kt
+- app/src/main/java/com/jarvis/assistant/ui/Theme.kt
+- app/src/main/java/com/jarvis/assistant/util/BootReceiver.kt
+- app/src/main/java/com/jarvis/assistant/util/ReminderReceiver.kt
+- app/src/main/java/com/jarvis/assistant/voice/SpeechRecognizerManager.kt
+- app/src/main/java/com/jarvis/assistant/voice/TtsManager.kt
+- app/src/main/res/drawable/ic_launcher_foreground.xml
+- app/src/main/res/drawable/ic_stat_jarvis.xml
+- app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+- app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+- app/src/main/res/values/colors.xml
+- app/src/main/res/values/strings.xml
+- app/src/main/res/values/themes.xml
+- app/src/main/res/xml/accessibility_service_config.xml
+- app/src/test/java/com/jarvis/assistant/ai/AppNameAliasTest.kt
+- app/src/test/java/com/jarvis/assistant/ai/ProviderOrderTest.kt
+- app/src/test/java/com/jarvis/assistant/notifications/NameNormalizerTest.kt
+- app/src/test/java/com/jarvis/assistant/notifications/NotificationDedupTest.kt
+- app/src/test/java/com/jarvis/assistant/notifications/ReminderEligibilityTest.kt
+- build-apk-workflow.yml
+- build.gradle.kts
+- gradle.properties
+- README.md
+- settings.gradle.kts

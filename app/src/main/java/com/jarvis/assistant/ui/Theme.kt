@@ -14,18 +14,12 @@ val JarvisText = Color(0xFFE6F1F5)
 val JarvisRed = Color(0xFFFF5370)
 
 private val Colors = darkColorScheme(
-    primary = JarvisCyan,
-    onPrimary = Color.Black,
-    secondary = JarvisCyan,
-    onSecondary = Color.Black,
-    background = JarvisBg,
-    onBackground = JarvisText,
-    surface = JarvisSurface,
-    onSurface = JarvisText,
-    surfaceVariant = JarvisRaised,
-    onSurfaceVariant = JarvisDim,
-    error = JarvisRed,
-    onError = Color.Black
+    primary = JarvisCyan, onPrimary = Color.Black,
+    secondary = JarvisCyan, onSecondary = Color.Black,
+    background = JarvisBg, onBackground = JarvisText,
+    surface = JarvisSurface, onSurface = JarvisText,
+    surfaceVariant = JarvisRaised, onSurfaceVariant = JarvisDim,
+    error = JarvisRed, onError = Color.Black
 )
 
 @Composable

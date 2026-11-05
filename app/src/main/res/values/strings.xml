@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">JARVIS</string>
-    <string name="accessibility_desc">Lets JARVIS operate quick settings, navigate screens and tap controls you ask it to use.</string>
-    <string name="notification_channel_service">JARVIS background service</string>
-    <string name="notification_channel_alerts">JARVIS reminders</string>
-    <string name="notification_channel_messages">Message previews</string>
+    <string name="notification_channel_service">JARVIS service</string>
+    <string name="notification_channel_alerts">JARVIS alerts</string>
+    <string name="service_running">JARVIS is listening</string>
+    <string name="service_muted">JARVIS paused</string>
+    <string name="tap_to_open">Tap to open</string>
 </resources>
