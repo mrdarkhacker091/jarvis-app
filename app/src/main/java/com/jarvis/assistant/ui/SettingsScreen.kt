@@ -145,9 +145,9 @@ private fun ProviderCard(p: Provider, onChange: (Provider) -> Unit, onTest: ((St
             Spacer(Modifier.weight(1f))
             Switch(checked = p.enabled, onCheckedChange = { onChange(p.copy(enabled = it)) })
         }
-        OutTextField("Base URL", p.baseUrl) { onChange(p.copy(baseUrl = it)) }
-        OutTextField("Model", p.model) { onChange(p.copy(model = it)) }
-        OutTextField("API key", p.apiKey, password = !showKey) { onChange(p.copy(apiKey = it)) }
+        OutTextField(label = "Base URL", value = p.baseUrl, onChange = { onChange(p.copy(baseUrl = it)) })
+        OutTextField(label = "Model", value = p.model, onChange = { onChange(p.copy(model = it)) })
+        OutTextField(label = "API key", value = p.apiKey, onChange = { onChange(p.copy(apiKey = it)) }, password = !showKey)
         Row {
             Button(onClick = { showKey = !showKey }, colors = ButtonDefaults.buttonColors(containerColor = JarvisRaised, contentColor = JarvisText)) { Text(if (showKey) "Hide" else "Show") }
             Spacer(Modifier.width(8.dp))
