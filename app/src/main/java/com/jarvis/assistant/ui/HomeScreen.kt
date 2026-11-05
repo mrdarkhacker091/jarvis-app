@@ -74,9 +74,9 @@ fun HomeScreen(
     var input by remember { mutableStateOf("") }
     var wake by remember { mutableStateOf(Prefs.get(ctx).wakeWordEnabled) }
     val transition = rememberInfiniteTransition(label = "core")
-    val rotation by transition.animateFloat(0f, 360f, infiniteRepeatable(animationSpec =
+    val rotation by transition.animateFloat(0f, 360f, infiniteRepeatable(animation =
         androidx.compose.animation.core.tween(9000, easing = LinearEasing), repeatMode = RepeatMode.Restart), label = "r")
-    val pulse by transition.animateFloat(0.3f, 1f, infiniteRepeatable(animationSpec =
+    val pulse by transition.animateFloat(0.3f, 1f, infiniteRepeatable(animation =
         androidx.compose.animation.core.tween(2400, easing = LinearEasing), repeatMode = RepeatMode.Reverse), label = "p")
     val battery = remember { batteryLevel(ctx) }
     val storageFree = remember { storageFreeGigabytes(ctx) }
