@@ -1,1 +1,0 @@
-# JARVIS — no special ProGuard rules; minify is off for the debug build.

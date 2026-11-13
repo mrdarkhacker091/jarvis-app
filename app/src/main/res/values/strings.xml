@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">JARVIS</string>
-    <string name="notification_channel_service">JARVIS service</string>
-    <string name="notification_channel_alerts">JARVIS alerts</string>
-    <string name="service_running">JARVIS is listening</string>
-    <string name="service_muted">JARVIS paused</string>
-    <string name="tap_to_open">Tap to open</string>
+    <string name="app_name">Jarvis AI</string>
+    <string name="assistant_hint">Ask Jarvis</string>
 </resources>

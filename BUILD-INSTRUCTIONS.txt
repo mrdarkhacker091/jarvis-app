@@ -1,7 +1,7 @@
 JARVIS AI — ANDROID COMPANION (native Kotlin source)
 =====================================================
-Files: 55
-Generated: 2026-11-04T20:51:39.711Z
+Files: 16
+Generated: 2026-10-14T07:04:36.339Z
 
 This is a real Android Studio project, not a WebView wrapper. Chat talks to the
 same secure Jarvis backend, speech uses the Android speech APIs, and every device
@@ -51,54 +51,15 @@ FILES
 -----
 - APK-BUILD.md
 - app/build.gradle.kts
-- app/proguard-rules.pro
 - app/src/main/AndroidManifest.xml
-- app/src/main/java/com/jarvis/assistant/accessibility/JarvisAccessibilityService.kt
-- app/src/main/java/com/jarvis/assistant/ai/AppNameAliases.kt
-- app/src/main/java/com/jarvis/assistant/ai/AppResolver.kt
-- app/src/main/java/com/jarvis/assistant/ai/JarvisBrain.kt
-- app/src/main/java/com/jarvis/assistant/ai/LlmClient.kt
-- app/src/main/java/com/jarvis/assistant/ai/LocalCommandRouter.kt
-- app/src/main/java/com/jarvis/assistant/ai/ProviderManager.kt
-- app/src/main/java/com/jarvis/assistant/ai/ProviderOrder.kt
-- app/src/main/java/com/jarvis/assistant/ai/providers/GeminiProvider.kt
-- app/src/main/java/com/jarvis/assistant/ai/ToolRegistry.kt
-- app/src/main/java/com/jarvis/assistant/ai/WebSearchTool.kt
-- app/src/main/java/com/jarvis/assistant/contacts/ContactsHelper.kt
-- app/src/main/java/com/jarvis/assistant/data/Memory.kt
-- app/src/main/java/com/jarvis/assistant/data/Prefs.kt
-- app/src/main/java/com/jarvis/assistant/JarvisBus.kt
-- app/src/main/java/com/jarvis/assistant/MainActivity.kt
-- app/src/main/java/com/jarvis/assistant/notifications/BriefingBuilder.kt
-- app/src/main/java/com/jarvis/assistant/notifications/JarvisNotificationListener.kt
-- app/src/main/java/com/jarvis/assistant/notifications/NameNormalizer.kt
-- app/src/main/java/com/jarvis/assistant/notifications/NotificationDedup.kt
-- app/src/main/java/com/jarvis/assistant/notifications/NotificationStore.kt
-- app/src/main/java/com/jarvis/assistant/notifications/ReminderEligibility.kt
-- app/src/main/java/com/jarvis/assistant/security/AppScanner.kt
-- app/src/main/java/com/jarvis/assistant/services/JarvisForegroundService.kt
-- app/src/main/java/com/jarvis/assistant/ui/AppScanScreen.kt
-- app/src/main/java/com/jarvis/assistant/ui/HomeScreen.kt
-- app/src/main/java/com/jarvis/assistant/ui/OnboardingScreen.kt
-- app/src/main/java/com/jarvis/assistant/ui/SettingsScreen.kt
-- app/src/main/java/com/jarvis/assistant/ui/Theme.kt
-- app/src/main/java/com/jarvis/assistant/util/BootReceiver.kt
-- app/src/main/java/com/jarvis/assistant/util/ReminderReceiver.kt
-- app/src/main/java/com/jarvis/assistant/voice/SpeechRecognizerManager.kt
-- app/src/main/java/com/jarvis/assistant/voice/TtsManager.kt
-- app/src/main/res/drawable/ic_launcher_foreground.xml
-- app/src/main/res/drawable/ic_stat_jarvis.xml
-- app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-- app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-- app/src/main/res/values/colors.xml
+- app/src/main/java/ai/jarvis/nexus/DeviceTools.kt
+- app/src/main/java/ai/jarvis/nexus/JarvisApi.kt
+- app/src/main/java/ai/jarvis/nexus/JarvisAssistantService.kt
+- app/src/main/java/ai/jarvis/nexus/MainActivity.kt
+- app/src/main/java/ai/jarvis/nexus/VoiceIo.kt
 - app/src/main/res/values/strings.xml
 - app/src/main/res/values/themes.xml
-- app/src/main/res/xml/accessibility_service_config.xml
-- app/src/test/java/com/jarvis/assistant/ai/AppNameAliasTest.kt
-- app/src/test/java/com/jarvis/assistant/ai/ProviderOrderTest.kt
-- app/src/test/java/com/jarvis/assistant/notifications/NameNormalizerTest.kt
-- app/src/test/java/com/jarvis/assistant/notifications/NotificationDedupTest.kt
-- app/src/test/java/com/jarvis/assistant/notifications/ReminderEligibilityTest.kt
+- app/src/main/res/xml/voice_interaction.xml
 - build-apk-workflow.yml
 - build.gradle.kts
 - gradle.properties
